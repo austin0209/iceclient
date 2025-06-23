@@ -7,6 +7,11 @@
 ;; Use command line or :jvm-opts in project.clj
 ;(System/setProperty "jna.library.path" "/opt/local/lib")
 
+; Declare these symbols from C in order to supress any clj-kondo warnings.
+(declare shout shout_version shout_init shout_new shout_set_host shout_set_protocol shout_set_port shout_set_password
+         shout_set_mount shout_set_user shout_set_format shout_set_name shout_set_genre shout_set_description shout_open
+         shout_send shout_sync shout_metadata_new shout_metadata_add shout_set_metadata shout_metadata_free shout_close
+         shout_shutdown shout_get_error int* constchar* void* byte* size_t)
 
 (defclib
   shout
@@ -41,22 +46,22 @@
    :MP3    1})
 
 (def protocols
-  {:HTTP 0
+  {:HTTP       0
    :XAUDIOCAST 1
-   :ICY 2})
+   :ICY        2})
 
 (def errors
   {:SUCCESS     0
-   :INSANE	-1
-   :NOCONNECT	-2
-   :NOLOGIN	-3
-   :SOCKET	-4
-   :MALLOC	-5
-   :METADATA	-6
-   :CONNECTED	-7
-   :UNCONNECTED	-8
-   :UNSUPPORTED	-9
-   :BUSY	-10})
+   :INSANE      -1
+   :NOCONNECT   -2
+   :NOLOGIN     -3
+   :SOCKET      -4
+   :MALLOC      -5
+   :METADATA    -6
+   :CONNECTED   -7
+   :UNCONNECTED -8
+   :UNSUPPORTED -9
+   :BUSY        -10})
 
 (def error-codes (zipmap (vals errors) (keys errors)))
 
@@ -105,10 +110,10 @@
                genre (shout_set_genre ms genre)
                description (shout_set_description ms description)
                true (shout_open ms))
-          ms ; return
-          (catch AssertionError e
-            (throw (Exception. (str "Error setting up shout connection: " (.getMessage e)
-                                    " caused error " (shout_get_error ms)))))))
+             ms                                             ; return
+             (catch AssertionError e
+               (throw (Exception. (str "Error setting up shout connection: " (.getMessage e)
+                                       " caused error " (shout_get_error ms)))))))
     ; else couldn't create shoutcast connector
     (throw (Exception. "could not create shotcast connector: "))))
 
@@ -121,7 +126,7 @@
   (if-let [shoutm (shout_metadata_new)]
     (do
       (doseq [[k v] metadata]
-        (let [m-name  (if (keyword? k) (name k) (str k))
+        (let [m-name (if (keyword? k) (name k) (str k))
               m-value (if (keyword? v) (name v) (str v))
               result (shout_metadata_add shoutm m-name m-value)]
           (when-not (= (:SUCCESS errors) result)
@@ -183,16 +188,16 @@
     (throw (Exception. (str "Error closing connection: " (shout_get_error ms)))))
   (shout_shutdown))
 
-
 (defn test-shout
   "Setup an example stream.  Requires icecast running and file available."
-  [filename]
+  [filename port format password]
   (let [mymeta {:song "songtest"}
-        mystream (open {:password "hackme"
-                        :mount "testshout.mp3"
-                        :stream-format (:MP3 stream-formats)
-                        :display-name "test-shout"
-                        :description "test-shout stream with example file"})]
-    (with-open [is (FileInputStream. filename)]
+        mystream (open {:password      password
+                        :mount         "testshout.mp3"
+                        :port          port
+                        :stream-format format
+                        :display-name  "test-shout"
+                        :description   "test-shout stream with example file"})]
+    (with-open [is (FileInputStream. ^String filename)]
       (stream mystream is mymeta))
     (close mystream)))
